@@ -1,39 +1,50 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Redirect,
+} from '@nestjs/common';
 import { AppService } from './app.service';
-
-export interface URLs {
-  fullURL: string;
-  shortURL: string;
-  counter: number;
-}
+import { originalURLDTO, shortURLDTO } from './dto/app.dto';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Post('shorten') // home page
-  async shorten(@Body('fullURL') fullURL: string): Promise<{
-    fullURL: string;
+  @Post() // home page
+  async shorten(@Body('originalURL') originalURL: originalURLDTO): Promise<{
+    originalURL: string;
     shortURL: string;
   }> {
-    const URLsResult = await this.appService.shortenUrl(fullURL);
+    const URLsResult = await this.appService.shortenUrl(originalURL);
 
     return URLsResult;
   }
 
   @Get('most-accessed-urls') // home page
-  async mostAccessedURLS(): Promise<URLs[]> {
+  async mostAccessedURLS() {
     const mostAccessed = await this.appService.getMostAccessedURLs();
 
     return mostAccessed;
   }
 
-  // @Get(':shortenURL') // home page
-  // shortenRedirectToFullRoute(@Param('shortenURL') shortenURL: string): {
-  //   shortURL: string;
-  // } {
-  //   const shortURL = this.appService.shortenUrl(url);
+  // @HttpCode()
+  @Get(':shortURL') // home page
+  @Redirect() // Use the @Redirect decorator to handle redirection
+  async shortURLRedirectToFullRoute(
+    @Param('shortURL') shortURL: shortURLDTO,
+  ): Promise<{ url: string }> {
+    const shouldReturnFullURL = await this.appService.returnFullURL(shortURL);
 
-  //   return { shortURL };
-  // }
+    console.log(shouldReturnFullURL);
+
+    if (!shouldReturnFullURL) {
+      return { url: '/' }; // Redirect to home page if the short URL is not found
+    }
+
+    return { url: shouldReturnFullURL };
+  }
 }

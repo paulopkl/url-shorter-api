@@ -1,0 +1,15 @@
+POST http://localhost:3000
+content-type: application/json
+
+{
+    "originalURL": "www.x.com"
+}
+
+####
+GET http://localhost:3000/vGt
+
+####
+GET http://localhost:3000/most-accessed-urls
+
+####
+GET http://localhost:3000/ZJXxB1l

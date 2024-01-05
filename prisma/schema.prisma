@@ -11,8 +11,8 @@ datasource db {
 }
 
 model URL {
-  id       String @id @default(uuid())
-  fullURL  String
-  shortURL String
-  counter  Int    @default(autoincrement())
+  // id          String @id @default(uuid())
+  originalURL String @id @unique
+  shortURL    String
+  counter     Int    @default(1)
 }

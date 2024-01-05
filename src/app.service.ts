@@ -1,57 +1,69 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { nanoid } from 'nanoid';
-import { PrismaService } from './prisma/prisma.service';
-import { URLs } from './app.controller';
+import { DatabaseService } from './database-module/database.service';
+import { UrlService } from './url-module/url-module.service';
 
 @Injectable()
 export class AppService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly urlService: UrlService,
+  ) {}
 
   async shortenUrl(
-    fullURL: string,
-  ): Promise<{ fullURL: string; shortURL: string }> {
-    const shortUrl = nanoid(7); // You can adjust the length of the short URL
+    originalURL: string,
+  ): Promise<{ originalURL: string; shortURL: string }> {
+    // The lowest length possible
+    // You can adjust the length of the short URL
+    const shortURL = nanoid(3);
 
-    const data = {
-      fullURL: fullURL,
-      shortURL: shortUrl,
-    };
-
-    const alreadyExists = await this.prisma.uRL.findFirst({
-      where: { fullURL: fullURL },
+    // CREATE if not exists, UPDATE counter + 1 if so
+    const result = await this.database.uRL.upsert({
+      where: {
+        originalURL,
+      },
+      create: {
+        originalURL,
+        shortURL,
+        counter: 1,
+      },
+      update: {
+        counter: {
+          increment: 1,
+        },
+      },
+      select: {
+        originalURL: true,
+        shortURL: true,
+      },
     });
 
-    if (alreadyExists) {
-      await this.prisma.uRL.updateMany({
-        where: {
-          fullURL,
-        },
-        data: {
-          counter: alreadyExists.counter + 1,
-        },
-      });
-    } else {
-      await this.prisma.uRL.create({
-        data,
-      });
-    }
-
-    return data;
+    return result;
   }
 
-  // getOriginalUrl(shortUrl: string): string | undefined {
-  //   return this.urlMap.get(shortUrl);
-  // }
+  async returnFullURL(shortUrl: string): Promise<string> {
+    const result = await this.database.uRL.findFirst({
+      where: {
+        shortURL: shortUrl,
+      },
+    });
 
-  async getMostAccessedURLs(): Promise<URLs[]> {
-    const mostAccessedURLs = await this.prisma.uRL.findMany({
+    const { originalURL } = result;
+
+    const fullURL = this.urlService.validateURL(originalURL);
+
+    return fullURL;
+  }
+
+  async getMostAccessedURLs() {
+    const mostAccessedURLs = await this.database.uRL.findMany({
       take: 100,
       orderBy: {
         counter: 'desc',
       },
       select: {
-        fullURL: true,
+        originalURL: true,
         shortURL: true,
         counter: true,
       },
@@ -59,4 +71,10 @@ export class AppService {
 
     return mostAccessedURLs;
   }
+
+  // private generateShortUrl(originalUrl: string): string {
+  //   const hash = crypto.createHash('md5').update(originalUrl).digest('hex');
+
+  //   return hash.slice(0, 6); // Adjust the length as needed
+  // }
 }
